@@ -12,10 +12,11 @@ class Animate4Line(object):
         self.dipole_position = dipole_position
         self.sensor_position = sensor_position
         self.lines = []
+        self.label = "The degree of rotation : {}"
         for i, color_item in enumerate(color):
             color_setting = '{}-'.format(color_item)
             self.lines.append(ax.plot([], [], color_setting, label=label[i])[0])
-
+        self.lines = tuple(self.lines)
 
         # self.title = "When Rotating {} degree"
 
@@ -29,19 +30,19 @@ class Animate4Line(object):
         self.success = 0
         for i,item in enumerate(self.lines):
             item.set_data([],[])
-
+        # self.ax.set_xlabel(self.label.format(self.success))
         return self.lines
 
     def __call__(self, i):
         if i == 0:
             return self.init()
         self.success += 1
-        rotate_result= calculate_amplitude(self.success, 0, self.success, self.dipole_position, self.sensor_position,self.x_data)
+        rotate_result= calculate_amplitude(self.success, 0, 0, self.dipole_position, self.sensor_position,self.x_data)
         result_dict = result_package(rotate_result)
         for index, (key, value) in enumerate(result_dict.items()):
             self.lines[index].set_data(self.x_data, value)
         print("Degree : {}".format(self.success))
-
+        # self.ax.set_xlabel(self.label.format(self.success))
         return self.lines
 
 def animation_simulate():
@@ -123,11 +124,11 @@ def calculate_amplitude(x_degree, y_degree, z_degree, dipole_position, sensor_po
     """
     data_number = time_range.size
     signal_array = np.zeros((3, data_number))
-    signal_array[0, :] = np.sin(time_range)
-    signal_array[1, :] = np.cos(time_range)
+    signal_array[0, :] = np.sin(time_range) / 3
+    signal_array[1, :] = np.sin(time_range) / 3
     # signal_array[1, :] = np.zeros(data_number)
-    signal_array[2, :] = np.zeros(data_number)
-    # signal_array[2, :] = np.sin(time_range) + np.cos(time_range)
+    # signal_array[2, :] = np.zeros(data_number)
+    signal_array[2, :] = np.sin(time_range) / 3
     B2signal = dipole_mag(dipole_position, sensor_position, signal_array)
     rotate_result = rotate_mag_flux(B2signal, x_degree, y_degree, z_degree)
     return rotate_result
