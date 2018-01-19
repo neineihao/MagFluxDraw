@@ -5,14 +5,11 @@ from matplotlib.animation import FuncAnimation
 
 
 class Animate4Line(object):
-    def __init__(self, ax, color, label, dipole_position, sensor_position, x_data):
+    def __init__(self, ax, color, label, x_data):
         self.success = 0
         self.x_data = x_data
         self.ax = ax
-        self.dipole_position = dipole_position
-        self.sensor_position = sensor_position
         self.lines = []
-        self.label = "The degree of rotation : {}"
         for i, color_item in enumerate(color):
             color_setting = '{}-'.format(color_item)
             self.lines.append(ax.plot([], [], color_setting, label=label[i])[0])
@@ -20,11 +17,22 @@ class Animate4Line(object):
 
         # self.title = "When Rotating {} degree"
 
+    def set_rotate_degree(self, degree_default, vary_matrix):
+        self.degree_default = degree_default
+        self.vary_matrix = vary_matrix
+
+    def set_dipole_position(self, dipole_position):
+        self.dipole_position = dipole_position
+
+    def set_sensor_position(self, sensor_position):
+        self.sensor_position = sensor_position
+
     def setting(self,y_high):
         self.ax.set_ylim(0, y_high)
-        self.ax.set_xlim(-2 * np.pi, 2 * np.pi)
+        self.ax.set_xlim(self.x_data.min(), self.x_data.max())
         self.ax.grid(True)
-        self.ax.set_title("Variation of Signal Amplitude")
+        self.ax.set_title("The position of dipole, sensor = {}, {}\n The signal vary matrix = {}"
+                          .format(self.dipole_position, self.sensor_position, self.vary_matrix))
 
     def init(self):
         self.success = 0
@@ -37,7 +45,8 @@ class Animate4Line(object):
         if i == 0:
             return self.init()
         self.success += 1
-        rotate_result= calculate_amplitude(self.success, 0, 0, self.dipole_position, self.sensor_position,self.x_data)
+        degree_matrix = degree_setting(self.degree_default, self.vary_matrix, self.success)
+        rotate_result= calculate_amplitude(degree_matrix, self.dipole_position, self.sensor_position,self.x_data)
         result_dict = result_package(rotate_result)
         for index, (key, value) in enumerate(result_dict.items()):
             self.lines[index].set_data(self.x_data, value)
@@ -45,21 +54,17 @@ class Animate4Line(object):
         # self.ax.set_xlabel(self.label.format(self.success))
         return self.lines
 
-def animation_simulate():
-    dipole_position = np.array([0, 0, 0])
-    sensor_position = np.array([1, 2, 3])
-    time = np.linspace(-2 * np.pi, 2 * np.pi, 100)
-    color_list = ['b', 'r', 'g', 'm','y']
-    label_list = ['Bx', 'By', 'Bz', 'Split_Total', 'Combine_Total']
-    # animation_draw(color_list, dipole_position, sensor_position, time, file_name="./fig/line")
-    animation_draw(color_list, label_list, dipole_position, sensor_position, time)
+def degree_setting(degree_default, vary_matrix, vary_value):
+    return vary_matrix * vary_value + degree_default
 
-
-
-def animation_draw(color_list, label_list, dipole_position, sensor_position, time, file_name=""):
+def animation_draw(color_list, label_list, dipole_position, sensor_position, time, degree_default, vary_matrix,
+                   file_name=""):
     fig, ax = plt.subplots()
-    al = Animate4Line(ax, color_list, label_list, dipole_position, sensor_position, time)
-    al.setting(200)
+    al = Animate4Line(ax, color_list, label_list, time)
+    al.set_dipole_position(dipole_position)
+    al.set_sensor_position(sensor_position)
+    al.set_rotate_degree(degree_default, vary_matrix)
+    al.setting(10)
 
     anim = FuncAnimation(fig, al, frames=np.arange(360), init_func=al.init,
                          interval=50, blit=True)
@@ -70,24 +75,28 @@ def animation_draw(color_list, label_list, dipole_position, sensor_position, tim
 
 
 def dipole_mag(dipole_position, sensor_position, dipole_signal):
+    Bt = 0.03
     position_matrix = sensor_position - dipole_position
     t_position_matrix = position_matrix.reshape(1, 3)
-    result = t_position_matrix.dot(dipole_signal)
-    result = position_matrix.reshape(3,1).dot(result)
+    r = ((position_matrix ** 2).sum()) ** 1/2
+    child = position_matrix.reshape(3,1).dot(t_position_matrix.dot(dipole_signal))
+    result = Bt * (3 * child / (r ** 5) - dipole_signal / (r ** 3))
+
     return result
 
 def print_shape(numpy_matrix, name):
     print("The size of {} : {}".format(name, numpy_matrix.shape))
 
-def rotate_mag_flux(matrix, x_degree, y_degree, z_degree):
+# def rotate_mag_flux(x_degree, y_degree, z_degree):
+def rotate_mag_flux(degree_matrix):
+    x_degree, y_degree, z_degree = degree_matrix[0], degree_matrix[1], degree_matrix[2]
     # print_shape(matrix.transpose(), 'Matrix')
     rotateX_matrix = np.array([(1, 0, 0), (0, cos(x_degree), -sin(x_degree)), (0, sin(x_degree), cos(x_degree))])
-    rotateY_matrix = np.array([(cos(y_degree), 0, sin(y_degree)), (0, 1, 0), (-sin(y_degree), 0, cos(x_degree))])
+    rotateY_matrix = np.array([(cos(y_degree), 0, sin(y_degree)), (0, 1, 0), (-sin(y_degree), 0, cos(y_degree))])
     rotateZ_matrix = np.array([(cos(z_degree), -sin(z_degree), 0), (sin(z_degree), cos(z_degree), 0),(0, 0, 1)])
     rotate_matrix = rotateX_matrix.dot(np.dot(rotateY_matrix, rotateZ_matrix))
     # print_shape(rotate_matrix,"Rotate Matrix")
-    result_matrix = np.dot(matrix.transpose(), rotate_matrix)
-    return result_matrix.transpose()
+    return rotate_matrix
 
 def two_dimension_plot(ax, xAxis, yAxis, line, color='b'):
     ax.plot(xAxis, yAxis, '{}-'.format(color), label=line)
@@ -108,11 +117,11 @@ def result_package(mag_result):
     for i in range(row):
         result_dict[name_list[i]] = mag_result[i, :] ** 2
         temp_total += result_dict[name_list[i]]
-    result_dict['Bsplit'] =  (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
-    result_dict['Btotal'] = temp_total
+    result_dict['CombineSum'] =  (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
+    result_dict['SplitSum'] = temp_total
     return result_dict
 
-def calculate_amplitude(x_degree, y_degree, z_degree, dipole_position, sensor_position,
+def calculate_amplitude(degree_matrix, dipole_position, sensor_position,
                         time_range):
     """
     :param x_degree: The degree rotate along x-axis
@@ -124,13 +133,15 @@ def calculate_amplitude(x_degree, y_degree, z_degree, dipole_position, sensor_po
     """
     data_number = time_range.size
     signal_array = np.zeros((3, data_number))
-    signal_array[0, :] = np.sin(time_range) / 3
-    signal_array[1, :] = np.sin(time_range) / 3
-    # signal_array[1, :] = np.zeros(data_number)
-    # signal_array[2, :] = np.zeros(data_number)
-    signal_array[2, :] = np.sin(time_range) / 3
+    # signal_array[0, :] = np.zeros(data_number)
+    signal_array[0, :] = np.sin(time_range)
+    # signal_array[1, :] = np.sin(time_range) / 3
+    signal_array[1, :] = np.zeros(data_number)
+    signal_array[2, :] = np.zeros(data_number)
+    # signal_array[2, :] = np.sin(time_range)
     B2signal = dipole_mag(dipole_position, sensor_position, signal_array)
-    rotate_result = rotate_mag_flux(B2signal, x_degree, y_degree, z_degree)
+    rotate_matrix = rotate_mag_flux(degree_matrix)
+    rotate_result = np.dot(rotate_matrix, B2signal)
     return rotate_result
 
 def set_ax_data(ax, title='Title', xName='x-axis', yName='y-axis'):
@@ -163,6 +174,18 @@ def test_function():
     print("The row, column : ({}, {})".format(test_array[0], test_array[1]))
     print(np.ones((3,4)))
 
+def animation_simulate():
+    dipole_position = np.array([0, 0, 0])
+    sensor_position = np.array([1, 0, 0])
+    degree_default = np.array([0, 0, 0])
+    vary_matrix = np.array([0, 0, 1])
+    time = np.linspace(-2 * np.pi, 2 * np.pi, 100)
+    color_list = ['b', 'r', 'g', 'm','y']
+    label_list = ['Bx', 'By', 'Bz', 'Split_Total', 'Combine_Total']
+    file_name = "Z_rotate_test"
+    # animation_draw(color_list, dipole_position, sensor_position, time, file_name="./fig/line")
+    animation_draw(color_list, label_list, dipole_position, sensor_position, time, degree_default,
+                   vary_matrix, file_name=file_name)
 
 if __name__ == '__main__':
     # test_function()
