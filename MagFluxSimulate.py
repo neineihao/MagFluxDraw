@@ -27,7 +27,7 @@ class Animate4Line(object):
     def set_sensor_position(self, sensor_position):
         self.sensor_position = sensor_position
 
-    def setting(self,y_high):
+    def plot_setting(self,y_high):
         self.ax.set_ylim(-y_high, y_high)
         self.ax.set_xlim(self.x_data.min(), self.x_data.max())
         self.ax.grid(True)
@@ -41,16 +41,28 @@ class Animate4Line(object):
         # self.ax.set_xlabel(self.label.format(self.success))
         return self.lines
 
+    def set_data(self):
+        rotate_result = self.calculate_data()
+        result_dict = self.package_data(rotate_result)
+        for index, (key, value) in enumerate(result_dict.items()):
+            self.lines[index].set_data(self.x_data, value)
+
+    def calculate_data(self):
+        degree_matrix = degree_setting(self.degree_default, self.vary_matrix, self.success)
+        rotate_result = calculate_amplitude(degree_matrix, self.dipole_position, self.sensor_position, self.x_data)
+        return rotate_result
+
+    def package_data(self, data):
+        result_dict = result_package(data)
+        return result_dict
+
     def __call__(self, i):
         if i == 0:
             return self.init()
         self.success += 1
-        degree_matrix = degree_setting(self.degree_default, self.vary_matrix, self.success)
-        rotate_result= calculate_amplitude(degree_matrix, self.dipole_position, self.sensor_position,self.x_data)
-        result_dict = result_package(rotate_result)
-        for index, (key, value) in enumerate(result_dict.items()):
-            self.lines[index].set_data(self.x_data, value)
+        self.set_data()
         print("Degree : {}".format(self.success))
+
         # self.ax.set_xlabel(self.label.format(self.success))
         return self.lines
 
@@ -161,7 +173,7 @@ def test_function():
 def animation_draw():
     fig, ax = plt.subplots()
     dipole_position = np.array([0, 0, 0])
-    sensor_position = np.array([1, 0, 0])
+    sensor_position = np.array([0, 1, 0])
     degree_default = np.array([0, 0, 0])
     vary_matrix = np.array([0, 0, 1])
     time = np.linspace(-2 * np.pi, 2 * np.pi, 100)
@@ -173,7 +185,7 @@ def animation_draw():
     al.set_dipole_position(dipole_position)
     al.set_sensor_position(sensor_position)
     al.set_rotate_degree(degree_default, vary_matrix)
-    al.setting(20)
+    al.plot_setting(20)
     anim = FuncAnimation(fig, al, frames=np.arange(360), init_func=al.init,
                          interval=50, blit=True)
     if file_name:
