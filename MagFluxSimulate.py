@@ -28,10 +28,10 @@ class Animate4Line(object):
         self.sensor_position = sensor_position
 
     def setting(self,y_high):
-        self.ax.set_ylim(0, y_high)
+        self.ax.set_ylim(-y_high, y_high)
         self.ax.set_xlim(self.x_data.min(), self.x_data.max())
         self.ax.grid(True)
-        self.ax.set_title("The position of dipole, sensor = {}, {}\n The signal vary matrix = {}"
+        self.ax.set_title("The position of dipole, sensor = {}, {}\n The rotating vary matrix = {}"
                           .format(self.dipole_position, self.sensor_position, self.vary_matrix))
 
     def init(self):
@@ -56,23 +56,6 @@ class Animate4Line(object):
 
 def degree_setting(degree_default, vary_matrix, vary_value):
     return vary_matrix * vary_value + degree_default
-
-def animation_draw(color_list, label_list, dipole_position, sensor_position, time, degree_default, vary_matrix,
-                   file_name=""):
-    fig, ax = plt.subplots()
-    al = Animate4Line(ax, color_list, label_list, time)
-    al.set_dipole_position(dipole_position)
-    al.set_sensor_position(sensor_position)
-    al.set_rotate_degree(degree_default, vary_matrix)
-    al.setting(10)
-
-    anim = FuncAnimation(fig, al, frames=np.arange(360), init_func=al.init,
-                         interval=50, blit=True)
-    if file_name:
-        anim.save("{}.gif".format(file_name), writer='imagemagick',dpi=80)
-    plt.legend()
-    plt.show()
-
 
 def dipole_mag(dipole_position, sensor_position, dipole_signal):
     Bt = 0.03
@@ -115,8 +98,8 @@ def result_package(mag_result):
     name_list = ['Bx', 'By', 'Bz']
     temp_total = np.zeros(column)
     for i in range(row):
-        result_dict[name_list[i]] = mag_result[i, :] ** 2
-        temp_total += result_dict[name_list[i]]
+        result_dict[name_list[i]] = mag_result[i, :]
+        temp_total += result_dict[name_list[i]] ** 2
     result_dict['CombineSum'] =  (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
     result_dict['SplitSum'] = temp_total
     return result_dict
@@ -135,8 +118,9 @@ def calculate_amplitude(degree_matrix, dipole_position, sensor_position,
     signal_array = np.zeros((3, data_number))
     # signal_array[0, :] = np.zeros(data_number)
     signal_array[0, :] = np.sin(time_range)
-    # signal_array[1, :] = np.sin(time_range) / 3
-    signal_array[1, :] = np.zeros(data_number)
+    signal_array[1, :] = np.cos(time_range)
+
+    # signal_array[1, :] = np.zeros(data_number)
     signal_array[2, :] = np.zeros(data_number)
     # signal_array[2, :] = np.sin(time_range)
     B2signal = dipole_mag(dipole_position, sensor_position, signal_array)
@@ -174,20 +158,30 @@ def test_function():
     print("The row, column : ({}, {})".format(test_array[0], test_array[1]))
     print(np.ones((3,4)))
 
-def animation_simulate():
+def animation_draw():
+    fig, ax = plt.subplots()
     dipole_position = np.array([0, 0, 0])
     sensor_position = np.array([1, 0, 0])
     degree_default = np.array([0, 0, 0])
     vary_matrix = np.array([0, 0, 1])
     time = np.linspace(-2 * np.pi, 2 * np.pi, 100)
-    color_list = ['b', 'r', 'g', 'm','y']
+    color_list = ['b', 'r', 'g', 'm', 'y']
     label_list = ['Bx', 'By', 'Bz', 'Split_Total', 'Combine_Total']
-    file_name = "Z_rotate_test"
-    # animation_draw(color_list, dipole_position, sensor_position, time, file_name="./fig/line")
-    animation_draw(color_list, label_list, dipole_position, sensor_position, time, degree_default,
-                   vary_matrix, file_name=file_name)
+    file_name=''
+
+    al = Animate4Line(ax, color_list, label_list, time)
+    al.set_dipole_position(dipole_position)
+    al.set_sensor_position(sensor_position)
+    al.set_rotate_degree(degree_default, vary_matrix)
+    al.setting(20)
+    anim = FuncAnimation(fig, al, frames=np.arange(360), init_func=al.init,
+                         interval=50, blit=True)
+    if file_name:
+        anim.save("{}.gif".format(file_name), writer='imagemagick',dpi=80)
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
     # test_function()
     # main()
-    animation_simulate()
+    animation_draw()
