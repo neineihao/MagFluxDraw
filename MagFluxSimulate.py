@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as ss
 from matplotlib.animation import FuncAnimation
+# from FourierAnimate import FourierAnimate
 
 
 class Animate4Line(object):
@@ -14,6 +15,7 @@ class Animate4Line(object):
             color_setting = '{}-'.format(color_item)
             self.lines.append(ax.plot([], [], color_setting, label=label[i])[0])
         self.lines = tuple(self.lines)
+        self.width = (x_data.max() - x_data.min()) / x_data.size
 
         # self.title = "When Rotating {} degree"
 
@@ -182,6 +184,7 @@ def animation_draw():
     file_name=''
 
     al = Animate4Line(ax, color_list, label_list, time)
+    # al = FourierAnimate(ax, color_list, label_list, time)
     al.set_dipole_position(dipole_position)
     al.set_sensor_position(sensor_position)
     al.set_rotate_degree(degree_default, vary_matrix)
