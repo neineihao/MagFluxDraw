@@ -8,7 +8,9 @@ from matplotlib.animation import FuncAnimation
 class Animate4Line(object):
     def __init__(self, ax, color, label, x_data):
         self.success = 0
+        self.rotate = 0
         self.x_data = x_data
+        self.x_fre = np.arange(1, x_data.size/2 , 1)
         self.ax = ax
         self.lines = []
         for i, color_item in enumerate(color):
@@ -46,11 +48,12 @@ class Animate4Line(object):
     def set_data(self):
         rotate_result = self.calculate_data()
         result_dict = self.package_data(rotate_result)
+        #TODO Dictionary to tuple
         for index, (key, value) in enumerate(result_dict.items()):
             self.lines[index].set_data(self.x_data, value)
 
     def calculate_data(self):
-        degree_matrix = degree_setting(self.degree_default, self.vary_matrix, self.success)
+        degree_matrix = degree_setting(self.degree_default, self.vary_matrix, self.rotate)
         rotate_result = calculate_amplitude(degree_matrix, self.dipole_position, self.sensor_position, self.x_data)
         return rotate_result
 
@@ -62,6 +65,7 @@ class Animate4Line(object):
         if i == 0:
             return self.init()
         self.success += 1
+        self.rotate = self.success
         self.set_data()
         print("Degree : {}".format(self.success))
 
@@ -114,7 +118,8 @@ def result_package(mag_result):
     for i in range(row):
         result_dict[name_list[i]] = mag_result[i, :]
         temp_total += result_dict[name_list[i]] ** 2
-    result_dict['CombineSum'] =  (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
+    result_dict['CombineSum'] = (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
+    # result_dict['SplitSum'] = (mag_result[0, :] + mag_result[1, :] + mag_result[2, :]) ** 2
     result_dict['SplitSum'] = temp_total
     return result_dict
 
@@ -131,8 +136,8 @@ def calculate_amplitude(degree_matrix, dipole_position, sensor_position,
     data_number = time_range.size
     signal_array = np.zeros((3, data_number))
     # signal_array[0, :] = np.zeros(data_number)
-    signal_array[0, :] = np.sin(time_range)
-    signal_array[1, :] = np.cos(time_range)
+    signal_array[0, :] = np.sin(1 * time_range)
+    signal_array[1, :] = np.sin(2 * time_range)
 
     # signal_array[1, :] = np.zeros(data_number)
     signal_array[2, :] = np.zeros(data_number)
@@ -180,7 +185,7 @@ def animation_draw():
     vary_matrix = np.array([0, 0, 1])
     time = np.linspace(-2 * np.pi, 2 * np.pi, 100)
     color_list = ['b', 'r', 'g', 'm', 'y']
-    label_list = ['Bx', 'By', 'Bz', 'Split_Total', 'Combine_Total']
+    label_list = ['Bx', 'By', 'Bz', 'Combine_Total', 'Split_Total']
     file_name=''
 
     al = Animate4Line(ax, color_list, label_list, time)
